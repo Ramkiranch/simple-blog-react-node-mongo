@@ -17,9 +17,9 @@ router.get('/:id', async (req, res) => {
 
 // Create new post
 router.post('/', async (req, res) => {
-    const { title, body, author, username } = req.body;
+    const { title, body, author, username, imageUrl } = req.body;
     if (!username) return res.status(400).json({ error: 'Username required' });
-    const newPost = new Post({ title, body, author, username });
+    const newPost = new Post({ title, body, author, username, imageUrl });
     await newPost.save();
     res.status(201).json(newPost);
 });

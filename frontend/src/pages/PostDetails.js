@@ -1,13 +1,17 @@
 // Author: Ram Chevendra
-import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useEffect, useState, useContext } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
-import { useParams } from "react-router-dom";
+import { UserContext } from "../UserContext";
 
 export default function PostDetails() {
   const { id } = useParams();
+  const { user, token } = useContext(UserContext);
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [comments, setComments] = useState([]);
+  const [commentText, setCommentText] = useState("");
+  const [commentLoading, setCommentLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -15,7 +19,24 @@ export default function PostDetails() {
     axios.get(`http://localhost:5001/api/posts/${id}`)
       .then(res => setPost(res.data))
       .finally(() => setLoading(false));
+    axios.get(`http://localhost:5001/api/comments/${id}`)
+      .then(res => setComments(res.data));
   }, [id]);
+
+  const handleComment = async (e) => {
+    e.preventDefault();
+    if (!commentText.trim()) return;
+    setCommentLoading(true);
+    await axios.post(
+      `http://localhost:5001/api/comments/${id}`,
+      { text: commentText },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    setCommentText("");
+    const res = await axios.get(`http://localhost:5001/api/comments/${id}`);
+    setComments(res.data);
+    setCommentLoading(false);
+  };
 
   if (loading) return (
     <div className="post-details-fullpage-bg">
@@ -46,7 +67,37 @@ export default function PostDetails() {
           </div>
         </div>
         <h2 className="post-details-title">{post.title}</h2>
+        {post.imageUrl && (
+          <div style={{margin: '18px 0'}}>
+            <img src={`http://localhost:5001${post.imageUrl}`} alt="Post" style={{maxWidth: '100%', maxHeight: 350, borderRadius: 8}} />
+          </div>
+        )}
         <div className="post-details-body">{post.body}</div>
+        <hr style={{margin: '32px 0 16px 0'}} />
+        <h3>Comments</h3>
+        {comments.length === 0 && <div>No comments yet.</div>}
+        <ul style={{paddingLeft: 0}}>
+          {comments.map(c => (
+            <li key={c._id} style={{marginBottom: 12, listStyle: 'none'}}>
+              <b>{c.username}</b>: {c.text} <span style={{color:'#888', fontSize:12}}>{new Date(c.createdAt).toLocaleString()}</span>
+            </li>
+          ))}
+        </ul>
+        {user ? (
+          <form onSubmit={handleComment} style={{marginTop: 16}}>
+            <textarea
+              value={commentText}
+              onChange={e => setCommentText(e.target.value)}
+              placeholder="Add a comment..."
+              rows={3}
+              style={{width: '100%', padding: 8}}
+              disabled={commentLoading}
+            />
+            <button type="submit" style={{marginTop: 8}} disabled={commentLoading || !commentText.trim()}>Post Comment</button>
+          </form>
+        ) : (
+          <div style={{marginTop: 16}}>Please log in to comment.</div>
+        )}
       </div>
     </div>
   );
